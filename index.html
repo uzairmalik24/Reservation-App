@@ -17,7 +17,7 @@
 
 <body>
 
-    <!-- Status Indicator -->
+    <!-- Status Indicator (fixed overlay) -->
     <div id="statusIndicator" class="status-indicator loading" role="status" aria-live="polite">
         <div class="loading-dots">
             <div></div>
@@ -27,7 +27,7 @@
         <span>Caricamento...</span>
     </div>
 
-    <!-- Header -->
+    <!-- Header (now unblocked) -->
     <header class="header">
         <div class="container">
             <h1 class="header__title">Roma Club CDLVI Parma</h1>
@@ -406,9 +406,11 @@
                     </div>
                     <div id="adminParticipantControls"
                         style="margin-bottom:1rem; display:flex; gap: 1rem; justify-content: center;">
-                        <button type="button" id="addAdminParticipantBtn" class="btn btn--outline btn--sm">➕ Aggiungi
+                        <button type="button" id="addAdminParticipantBtn" class="btn btn--outline btn--sm">➕
+                            Aggiungi
                             partecipante</button>
-                        <button type="button" id="removeAdminParticipantBtn" class="btn btn--outline btn--sm">➖ Rimuovi
+                        <button type="button" id="removeAdminParticipantBtn" class="btn btn--outline btn--sm">➖
+                            Rimuovi
                             ultimo</button>
                     </div>
                     <div id="editAdminParticipantsContainer"></div>

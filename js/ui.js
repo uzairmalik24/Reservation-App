@@ -22,17 +22,35 @@ export function showSection(sectionName) {
 }
 
 // Update status indicator
-export function updateStatus(type, message) {
+// In ui.js
+export function updateStatus(status, message = '') {
     const indicator = document.getElementById('statusIndicator');
+    if (!indicator) return;
 
-    indicator.className = `status-indicator ${type}`;
+    // Remove old classes
+    indicator.classList.remove('loading', 'synced', 'error', 'hidden');
+    indicator.classList.add('status-indicator', status);
 
-    if (type === 'loading') {
-        indicator.innerHTML = '<div class="loading"></div><span>' + message + '</span>';
-    } else if (type === 'synced') {
-        indicator.innerHTML = '✅ <span>' + message + '</span>';
-    } else if (type === 'error') {
-        indicator.innerHTML = '❌ <span>' + message + '</span>';
+    const span = indicator.querySelector('span');
+    if (span) span.textContent = message || (status === 'loading' ? 'Caricamento...' : status.charAt(0).toUpperCase() + status.slice(1) + '...');
+
+    // Auto-hide after 3s for success, or 5s max for stuck loading
+    if (status === 'synced' || status === 'error') {
+        setTimeout(() => hideStatusIndicator(), 3000);
+    } else if (status === 'loading') {
+        setTimeout(() => {
+            if (indicator.classList.contains('loading')) {
+                console.warn('Loading stuck >5s; auto-hiding.');
+                hideStatusIndicator();
+            }
+        }, 5000);
+    }
+}
+
+function hideStatusIndicator() {
+    const indicator = document.getElementById('statusIndicator');
+    if (indicator) {
+        indicator.classList.add('hidden');
     }
 }
 
