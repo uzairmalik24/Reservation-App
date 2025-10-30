@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roma Club CDLVI Parma - Gestione Trasferte</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+
+    <!-- Status Indicator -->
+    <div id="statusIndicator" class="status-indicator loading" role="status" aria-live="polite">
+        <div class="loading-dots">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+        <span>Caricamento...</span>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="header__title">Roma Club CDLVI Parma</h1>
+            <nav class="header__nav">
+                <button class="btn btn--secondary" id="homeBtn">Home</button>
+                <button class="btn btn--bookings" id="myBookingsBtn">
+                    <span class="btn-text-full">Le Mie Prenotazioni</span>
+                    <span class="btn-text-short">Prenotazioni</span>
+                </button>
+                <button class="btn btn--outline" id="adminBtn">Admin</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Home Section CON FILTRI -->
+            <section id="homeSection" class="section">
+                <div class="section__header">
+                    <h2>Gestione Trasferte</h2>
+                </div>
+
+                <!-- FILTRI -->
+                <div class="filters-container">
+                    <div class="filter-group">
+                        <label class="filter-label">Filtra per mese</label>
+                        <select id="monthFilter" class="filter-select">
+                            <option value="">Tutti i mesi</option>
+                            <option value="01">Gennaio</option>
+                            <option value="02">Febbraio</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Aprile</option>
+                            <option value="05">Maggio</option>
+                            <option value="06">Giugno</option>
+                            <option value="07">Luglio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Settembre</option>
+                            <option value="10">Ottobre</option>
+                            <option value="11">Novembre</option>
+                            <option value="12">Dicembre</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Filtra per competizione</label>
+                        <select id="competitionFilter" class="filter-select">
+                            <option value="">Tutte le competizioni</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="eventsContainer" class="events-grid">
+                    <!-- Events will be populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- My Bookings Search Section -->
+            <section id="myBookingsSearchSection" class="section hidden">
+                <div class="section__header">
+                    <h2>Le Mie Prenotazioni</h2>
+                    <p>Inserisci cognome e password per accedere alle tue prenotazioni</p>
+                </div>
+                <form id="searchBookingsForm" class="form">
+                    <div class="form-group">
+                        <label for="searchSurname" class="form-label">Cognome</label>
+                        <input type="text" id="searchSurname" class="form-control" placeholder="Il tuo cognome"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="searchPassword" class="form-label">Password</label>
+                        <input type="password" id="searchPassword" class="form-control"
+                            placeholder="Password della prenotazione" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--primary">Cerca Prenotazioni</button>
+                        <button type="button" class="btn btn--outline" id="cancelSearchBookings">Annulla</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- My Bookings Results Section -->
+            <section id="myBookingsResultsSection" class="section hidden">
+                <div class="section__header">
+                    <button class="btn btn--outline" id="backToSearchBookings">← Nuova Ricerca</button>
+                    <h2>Le Tue Prenotazioni</h2>
+                    <p id="userBookingsInfo">Prenotazioni trovate per: <span id="userNameDisplay"></span></p>
+                </div>
+                <div class="my-bookings-list">
+                    <div id="userBookingsList"></div>
+                </div>
+            </section>
+
+            <!-- Edit User Booking Form -->
+            <section id="editUserBookingSection" class="section hidden">
+                <div class="section__header">
+                    <h2>Modifica La Tua Prenotazione</h2>
+                    <p>Aggiorna i tuoi dati per la prenotazione</p>
+                </div>
+                <form id="editUserBookingForm" class="form">
+                    <input type="hidden" id="editUserBookingId">
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo Prenotazione *</label>
+                        <div class="radio-group">
+                            <label class="radio-item">
+                                <input type="radio" name="editBookingType" value="Solo Viaggio" required>
+                                Solo Viaggio
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="editBookingType" value="Solo Biglietto" required>
+                                Solo Biglietto
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="editBookingType" value="Biglietto + Viaggio" required>
+                                Biglietto + Viaggio
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="participantControls" style="margin-bottom:1rem; display:none;">
+                        <button type="button" id="addParticipant" class="btn btn--outline btn--sm">➕ Aggiungi
+                            partecipante</button>
+                        <button type="button" id="removeParticipant" class="btn btn--outline btn--sm">➖ Rimuovi
+                            ultimo</button>
+                    </div>
+                    <div id="editParticipantsContainer"></div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--success">Salva Modifiche</button>
+                        <button type="button" class="btn btn--outline" id="cancelEditUserBooking">Annulla</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Participants Section -->
+            <section id="participantsSection" class="section hidden">
+                <div class="section__header">
+                    <button class="btn btn--outline" id="backFromParticipants">← Torna agli Eventi</button>
+                    <h2 id="participantsEventTitle">Partecipanti</h2>
+                </div>
+                <div class="participants-stats">
+                    <div class="stat-card">
+                        <span class="stat-number" id="totalParticipants">0</span>
+                        <span class="stat-label">Totale Partecipanti</span>
+                    </div>
+                </div>
+                <div class="booking-types-summary">
+                    <div class="booking-type-stat">
+                        <span id="soloViaggio">0</span> Solo Viaggio
+                    </div>
+                    <div class="booking-type-stat">
+                        <span id="soloBiglietto">0</span> Solo Biglietto
+                    </div>
+                    <div class="booking-type-stat">
+                        <span id="bigliettoPiuViaggio">0</span> Biglietto + Viaggio
+                    </div>
+                </div>
+                <div class="participants-list">
+                    <div id="participantsList"></div>
+                </div>
+            </section>
+
+            <!-- Admin Login Section -->
+            <section id="adminLoginSection" class="section hidden">
+                <div class="section__header">
+                    <h2>Accesso Amministratore</h2>
+                    <p>Inserisci la password per accedere al pannello di controllo</p>
+                </div>
+                <form id="loginForm" class="form">
+                    <div class="form-group">
+                        <label for="adminPassword" class="form-label">Password</label>
+                        <input type="password" id="adminPassword" class="form-control"
+                            placeholder="Inserisci password admin" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--primary">Accedi</button>
+                        <button type="button" class="btn btn--outline" id="cancelLogin">Annulla</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Admin Dashboard -->
+            <section id="adminDashboardSection" class="section hidden">
+                <div class="section__header">
+                    <h2>Dashboard Amministratore</h2>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <button class="btn btn--success" id="addEventBtn">📅 Aggiungi Nuovo Evento</button>
+                        <button class="btn btn--danger" id="logoutBtn">🚪 Logout</button>
+                    </div>
+                </div>
+                <div class="admin-dashboard">
+                    <div id="adminEventsList"></div>
+                </div>
+            </section>
+
+            <!-- Add/Edit Event Form -->
+            <section id="eventFormSection" class="section hidden">
+                <div class="section__header">
+                    <h2 id="eventFormTitle">Aggiungi Nuovo Evento</h2>
+                    <p>Compila tutti i campi per creare o modificare l'evento</p>
+                </div>
+                <form id="eventForm" class="form">
+                    <input type="hidden" id="eventId">
+                    <div class="form-group">
+                        <label for="eventName" class="form-label">Nome Evento</label>
+                        <input type="text" id="eventName" class="form-control" placeholder="Es. Roma vs Juventus"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="eventCompetition" class="form-label">Competizione</label>
+                        <select id="eventCompetition" class="form-control">
+                            <option value="">Seleziona competizione... (facoltativo)</option>
+                            <option value="Campionato di Serie A">Campionato di Serie A</option>
+                            <option value="Europa League">Europa League</option>
+                            <option value="Coppa Italia">Coppa Italia</option>
+                            <option value="Champions League">Champions League</option>
+                            <option value="Conference League">Conference League</option>
+                            <option value="Amichevole">Amichevole</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="eventDate" class="form-label">Data</label>
+                        <input type="date" id="eventDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ora</label>
+                        <div class="time-input-group">
+                            <select id="eventHour" required>
+                                <option value="">Ore</option>
+                                <option value="00">00</option>
+                                <option value="01">01</option>
+                                <option value="02">02</option>
+                                <option value="03">03</option>
+                                <option value="04">04</option>
+                                <option value="05">05</option>
+                                <option value="06">06</option>
+                                <option value="07">07</option>
+                                <option value="08">08</option>
+                                <option value="09">09</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                                <option value="13">13</option>
+                                <option value="14">14</option>
+                                <option value="15">15</option>
+                                <option value="16">16</option>
+                                <option value="17">17</option>
+                                <option value="18">18</option>
+                                <option value="19">19</option>
+                                <option value="20">20</option>
+                                <option value="21">21</option>
+                                <option value="22">22</option>
+                                <option value="23">23</option>
+                            </select>
+                            <span class="time-separator">:</span>
+                            <select id="eventMinute" required>
+                                <option value="">Minuti</option>
+                                <option value="00">00</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventLocation" class="form-label">Luogo</label>
+                        <input type="text" id="eventLocation" class="form-control"
+                            placeholder="Es. Stadio Olimpico, Roma" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDescription" class="form-label">Descrizione (facoltativo)</label>
+                        <textarea id="eventDescription" class="form-control" rows="3"
+                            placeholder="Descrizione dell'evento..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--success" id="saveEventBtn">Salva Evento</button>
+                        <button type="button" class="btn btn--outline" id="cancelEventForm">Annulla</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Booking Form -->
+            <section id="bookingFormSection" class="section hidden">
+                <div class="section__header">
+                    <h2 id="bookingEventTitle">Prenota Evento</h2>
+                    <p>Inserisci i dati per prenotare la trasferta</p>
+                </div>
+                <form id="bookingForm" class="form" novalidate>
+                    <input type="hidden" id="bookingEventId">
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo Prenotazione *</label>
+                        <div class="radio-group">
+                            <label class="radio-item">
+                                <input type="radio" name="bookingType" value="Solo Viaggio" required>
+                                Solo Viaggio
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="bookingType" value="Solo Biglietto" required>
+                                Solo Biglietto
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="bookingType" value="Biglietto + Viaggio" required>
+                                Biglietto + Viaggio
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="participantsContainer"></div>
+
+                    <div class="text-center mb-2">
+                        <button type="button" class="btn btn--secondary" id="addParticipantBtn">➕ Aggiungi
+                            Partecipante/Famigliare</button>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--success" id="confirmBookingBtn">Conferma
+                            Prenotazione</button>
+                        <button type="button" class="btn btn--outline" id="cancelBooking">Annulla</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Admin Bookings View -->
+            <section id="adminBookingsSection" class="section hidden">
+                <div class="section__header">
+                    <button class="btn btn--outline" id="backFromAdminBookings">← Torna alla Dashboard</button>
+                    <h2 id="adminBookingsEventTitle">Prenotazioni</h2>
+                </div>
+                <div class="participants-stats">
+                    <div class="stat-card">
+                        <span class="stat-number" id="adminTotalParticipants">0</span>
+                        <span class="stat-label">Totale Partecipanti</span>
+                    </div>
+                </div>
+                <div class="booking-types-summary">
+                    <div class="booking-type-stat">
+                        <span id="adminSoloViaggio">0</span> Solo Viaggio
+                    </div>
+                    <div class="booking-type-stat">
+                        <span id="adminSoloBiglietto">0</span> Solo Biglietto
+                    </div>
+                    <div class="booking-type-stat">
+                        <span id="adminBigliettoPiuViaggio">0</span> Biglietto + Viaggio
+                    </div>
+                </div>
+                <div class="text-center mb-2">
+                    <button class="btn btn--primary" id="printListBtn">🖨️ Stampa Lista</button>
+                    <button class="btn btn--secondary" id="exportCsvBtn">📊 Esporta CSV</button>
+                    <button class="btn btn--success" id="shareWhatsappBtn">📱 Condividi WhatsApp</button>
+                </div>
+                <div class="participants-list">
+                    <div id="adminParticipantsList"></div>
+                </div>
+            </section>
+
+            <!-- Edit Admin Booking Form -->
+            <section id="editAdminBookingSection" class="section hidden">
+                <div class="section__header">
+                    <h2>Modifica Prenotazione (Admin)</h2>
+                    <p>Modifica tutti i partecipanti della prenotazione</p>
+                </div>
+                <form id="editAdminBookingForm" class="form">
+                    <div class="form-group">
+                        <label class="form-label">Tipo Prenotazione Gruppo *</label>
+                        <div class="radio-group">
+                            <label class="radio-item"><input type="radio" name="editAdminBookingType"
+                                    value="Solo Viaggio" required> Solo Viaggio</label>
+                            <label class="radio-item"><input type="radio" name="editAdminBookingType"
+                                    value="Solo Biglietto" required> Solo Biglietto</label>
+                            <label class="radio-item"><input type="radio" name="editAdminBookingType"
+                                    value="Biglietto + Viaggio" required> Biglietto + Viaggio</label>
+                        </div>
+                    </div>
+                    <div id="adminParticipantControls"
+                        style="margin-bottom:1rem; display:flex; gap: 1rem; justify-content: center;">
+                        <button type="button" id="addAdminParticipantBtn" class="btn btn--outline btn--sm">➕ Aggiungi
+                            partecipante</button>
+                        <button type="button" id="removeAdminParticipantBtn" class="btn btn--outline btn--sm">➖ Rimuovi
+                            ultimo</button>
+                    </div>
+                    <div id="editAdminParticipantsContainer"></div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--success">Salva Tutte le Modifiche</button>
+                        <button type="button" class="btn btn--outline" id="cancelEditAdminBooking">Annulla</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Message Container -->
+            <div id="messageContainer" class="message-container hidden">
+                <div id="messageText" class="message"></div>
+            </div>
+
+            <!-- Modal Container -->
+            <div id="modalContainer" class="modal-overlay hidden">
+                <div class="modal">
+                    <h3 id="modalTitle">Conferma</h3>
+                    <p id="modalMessage">Sei sicuro?</p>
+                    <div class="modal-actions">
+                        <button class="btn btn--danger" id="modalConfirm">Sì</button>
+                        <button class="btn btn--outline" id="modalCancel">No</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Main Application Script - ES6 Module -->
+    <script type="module" src="./js/app.js"></script>
+
+</body>
+
+</html>
