@@ -212,6 +212,7 @@ function setupGlobalHandlers() {
     window.removeParticipantHandler = removeParticipant;
 
     // Admin edit booking handler
+    // Admin edit booking handler
     window.editBookingHandler = async (bookingId) => {
         const currentEventId = getState('currentEventId');
         const bookings = getState('bookings');
@@ -238,7 +239,7 @@ function setupGlobalHandlers() {
         container.innerHTML = '';
         resetParticipantCounter();
 
-        // Add first participant with password HTML
+        // Add first participant with password HTML (no remove button)
         const firstEntry = document.createElement('div');
         firstEntry.className = 'participant-entry';
         const baseHtml = generateParticipantHTML(0);
@@ -246,39 +247,62 @@ function setupGlobalHandlers() {
         tempDiv.innerHTML = baseHtml;
         const nomeField = tempDiv.querySelector('.participant-name').closest('.form-group');
         nomeField.insertAdjacentHTML('afterend', `
-            <div class="form-group">
-                <label class="form-label">Password di modifica prenotazione *</label>
-                <input type="text" id="bookingPassword" class="form-control" placeholder="Scegli una password per la modifica" required minlength="4" value="${booking.bookingPassword || ''}">
-                <span class="info-text">Ti servirà per modificare o cancellare la prenotazione</span>
-            </div>
-        `);
+        <div class="form-group">
+            <label class="form-label">Password di modifica prenotazione *</label>
+            <input type="text" id="bookingPassword" class="form-control" placeholder="Scegli una password per la modifica" required minlength="4" value="${booking.bookingPassword || ''}">
+            <span class="info-text">Ti servirà per modificare o cancellare la prenotazione</span>
+        </div>
+    `);
         firstEntry.innerHTML = tempDiv.innerHTML;
         populateParticipant(firstEntry, booking.participants[0], true);
         const firstTitle = firstEntry.querySelector('h4');
         firstTitle.textContent = 'Partecipante Principale';
         container.appendChild(firstEntry);
+        setupCheckboxBehavior(firstEntry);
 
-        // Add additional participants
-        booking.participants.slice(1).forEach((participant, index) => {
-            addParticipant();
-            const entries = document.querySelectorAll('.participant-entry');
-            const entry = entries[index + 1];
-            populateParticipant(entry, participant);
-            const title = entry.querySelector('h4');
-            title.textContent = `Partecipante ${index + 2}`;
-            const removeButtonHtml = `
-                <div class="remove-participant">
-                    <button type="button" class="btn btn--danger btn--sm" onclick="window.removeParticipantHandler(this)">Rimuovi Partecipante</button>
-                </div>
-            `;
-            entry.insertAdjacentHTML('beforeend', removeButtonHtml);
-        });
+        // Add additional participants (each with their own remove button)
+        // Add additional participants (each with their own remove button)
+        // Add additional participants (each with their own remove button)
+        for (let i = 1; i < booking.participants.length; i++) {
+            const participant = booking.participants[i];
+
+            // Create new entry
+            const participantEntry = document.createElement('div');
+            participantEntry.className = 'participant-entry';
+
+            // Generate HTML
+            const html = generateParticipantHTML(i);
+            participantEntry.innerHTML = html;
+
+            // Find the form-row div and insert button AFTER it
+            const formRow = participantEntry.querySelector('.form-row');
+            if (formRow) {
+                const removeButtonHtml = `
+            <div class="remove-participant" style="margin-top: 1rem;">
+                <button type="button" class="btn btn--danger btn--sm" onclick="window.removeParticipantHandler(this)">Rimuovi Partecipante</button>
+            </div>
+        `;
+                formRow.insertAdjacentHTML('afterend', removeButtonHtml);  // Insert AFTER form-row
+            }
+
+            // Populate with data
+            populateParticipant(participantEntry, participant);
+            const title = participantEntry.querySelector('h4');
+            title.textContent = `Partecipante ${i + 1}`;
+            setupCheckboxBehavior(participantEntry);
+
+            // Append to container
+            container.appendChild(participantEntry);
+        }
+
+        console.log('Final container HTML:', container.innerHTML);
 
         setState('participantCounter', booking.participants.length);
 
         // Set booking type
         const type = booking.participants[0].bookingType;
-        document.querySelector(`input[name="bookingType"][value="${type}"]`).checked = true;
+        const typeRadio = document.querySelector(`input[name="bookingType"][value="${type}"]`);
+        if (typeRadio) typeRadio.checked = true;
 
         showSection('bookingForm');
     };
@@ -339,7 +363,7 @@ function setupGlobalHandlers() {
         container.innerHTML = '';
         resetParticipantCounter();
 
-        // Similar to admin edit, add first participant
+        // Add first participant (principal - no remove button)
         const firstEntry = document.createElement('div');
         firstEntry.className = 'participant-entry';
         const baseHtml = generateParticipantHTML(0);
@@ -347,39 +371,38 @@ function setupGlobalHandlers() {
         tempDiv.innerHTML = baseHtml;
         const nomeField = tempDiv.querySelector('.participant-name').closest('.form-group');
         nomeField.insertAdjacentHTML('afterend', `
-            <div class="form-group">
-                <label class="form-label">Password di modifica prenotazione *</label>
-                <input type="text" id="bookingPassword" class="form-control" placeholder="Scegli una password per la modifica" required minlength="4" value="${booking.bookingPassword || ''}">
-                <span class="info-text">Ti servirà per modificare o cancellare la prenotazione</span>
-            </div>
-        `);
+        <div class="form-group">
+            <label class="form-label">Password di modifica prenotazione *</label>
+            <input type="text" id="bookingPassword" class="form-control" placeholder="Scegli una password per la modifica" required minlength="4" value="${booking.bookingPassword || ''}">
+            <span class="info-text">Ti servirà per modificare o cancellare la prenotazione</span>
+        </div>
+    `);
         firstEntry.innerHTML = tempDiv.innerHTML;
         populateParticipant(firstEntry, booking.participants[0], true);
         const firstTitle = firstEntry.querySelector('h4');
         firstTitle.textContent = 'Partecipante Principale';
         container.appendChild(firstEntry);
 
-        // Add additional
+        // Add additional participants with remove buttons (addParticipant already includes one per entry)
         booking.participants.slice(1).forEach((participant, index) => {
-            addParticipant();
+            addParticipant(); // This adds a new entry WITH its own remove button
             const entries = document.querySelectorAll('.participant-entry');
-            const entry = entries[index + 1];
+            const entry = entries[entries.length - 1]; // Target the newly added entry
             populateParticipant(entry, participant);
             const title = entry.querySelector('h4');
             title.textContent = `Partecipante ${index + 2}`;
-            const removeButtonHtml = `
-                <div class="remove-participant">
-                    <button type="button" class="btn btn--danger btn--sm" onclick="window.removeParticipantHandler(this)">Rimuovi Partecipante</button>
-                </div>
-            `;
-            entry.insertAdjacentHTML('beforeend', removeButtonHtml);
+
+            // No need to add another remove button here - addParticipant() already did it
+            // Just re-setup checkbox behavior after population
+            setupCheckboxBehavior(entry);
         });
 
         setState('participantCounter', booking.participants.length);
 
         // Set booking type
         const type = booking.participants[0].bookingType;
-        document.querySelector(`input[name="bookingType"][value="${type}"]`).checked = true;
+        const typeRadio = document.querySelector(`input[name="bookingType"][value="${type}"]`);
+        if (typeRadio) typeRadio.checked = true;
 
         showSection('bookingForm');
     };

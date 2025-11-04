@@ -23,15 +23,17 @@ export function validateDate(dateString) {
     const [day, month, year] = dateString.split('/').map(Number);
     const date = new Date(year, month - 1, day);
 
-    const currentYear = new Date().getFullYear();
-    if (year < 1900 || year > currentYear) {
+    // Allow years from 1900 to 2299
+    if (year < 1900 || year > 2299) {
         return false;
     }
 
+    // Check for impossible dates like 31/02/2025
     return date.getFullYear() === year &&
         date.getMonth() === month - 1 &&
         date.getDate() === day;
 }
+
 
 // Email Validation
 export function validateEmail(email) {

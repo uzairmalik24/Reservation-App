@@ -461,87 +461,83 @@ export function printList() {
     const bookings = getState('bookings');
 
     const event = events.find(e => e.id === currentEventId);
-    if (!event) {
-        showMessage('Evento non trovato', 'error');
-        return;
-    }
+    if (!event) return;
 
     const eventBookings = bookings[currentEventId] || [];
-    if (eventBookings.length === 0) {
-        showMessage('Nessuna prenotazione da stampare', 'error');
-        return;
-    }
+    const allParticipants = [];
 
-    eventBookings.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    eventBookings.forEach(booking => {
+        booking.participants.forEach((participant, participantIndex) => {
+            allParticipants.push({
+                ...participant,
+                createdAt: booking.createdAt || '2025-01-01T00:00:00.000Z',
+                participantOrder: participantIndex
+            });
+        });
+    });
 
-    let globalParticipantCounter = 1;
-    const printHtml = `
-        <!DOCTYPE html>
-        <html lang="it">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Lista Partecipanti - ${event.name}</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; color: #333; line-height: 1.4; }
-                h1 { text-align: center; color: #4a5568; margin-bottom: 10px; }
-                h2 { color: #4a5568; margin-top: 30px; margin-bottom: 10px; }
-                .event-info { text-align: center; margin-bottom: 30px; font-size: 14px; }
-                .booking-group { margin-bottom: 20px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; }
-                .participant { margin-bottom: 10px; padding: 8px; background: #f7fafc; border-left: 4px solid #4a5568; }
-                .participant-name { font-weight: bold; font-size: 16px; }
-                .participant-details { font-size: 12px; margin-top: 5px; }
-                .participant-type { font-size: 12px; color: #4a5568; font-weight: bold; margin-bottom: 5px; }
-                .stats { text-align: center; margin-bottom: 20px; }
-                .stats div { display: inline-block; margin: 0 15px; font-size: 14px; }
-                @media print { body { margin: 0; } .no-print { display: none; } }
-            </style>
-        </head>
-        <body>
-            <h1>Lista Partecipanti</h1>
-            <div class="event-info">
-                <strong>${event.name}</strong><br>
-                📅 ${formatDate(event.date)} • 🕐 ${event.time} • 📍 ${event.location}
-                ${event.competition ? `<br><em>${event.competition}</em>` : ''}
-            </div>
-            <div class="stats">
-                <div>Totale: ${eventBookings.reduce((sum, b) => sum + b.participants.length, 0)} partecipanti</div>
-                <div>Solo Viaggio: ${eventBookings.reduce((sum, b) => sum + b.participants.filter(p => p.bookingType === 'Solo Viaggio').length, 0)}</div>
-                <div>Solo Biglietto: ${eventBookings.reduce((sum, b) => sum + b.participants.filter(p => p.bookingType === 'Solo Biglietto').length, 0)}</div>
-                <div>Biglietto + Viaggio: ${eventBookings.reduce((sum, b) => sum + b.participants.filter(p => p.bookingType === 'Biglietto + Viaggio').length, 0)}</div>
-            </div>
-            ${eventBookings.map((booking, bookingIndex) => {
-        const principal = booking.participants[0];
-        const participantsHtml = booking.participants.map((p) => {
-            const currentCount = globalParticipantCounter++;
-            return `
-                        <div class="participant">
-                            <div class="participant-name">${currentCount}. ${p.name} ${p.surname}</div>
-                            <div class="participant-type">${p.bookingType}</div>
-                            <div class="participant-details">
-                                📅 ${p.birthdate || 'N/D'} | 📍 ${p.birthplace || 'N/D'} (${p.birthProvince || 'N/A'})<br>
-                                🏠 ${p.residencePlace || 'N/D'} (${p.residenceProvince || 'N/A'}) | 📱 ${p.phone || 'N/D'} | ✉️ ${p.email || 'N/D'}<br>
-                                🎫 AS Roma Card: ${p.romaCard ? (p.romaCardNumber || 'Sì') : 'No'}
-                            </div>
-                        </div>
-                    `;
-        }).join('');
-        return `
-                    <div class="booking-group">
-                        <h2>Prenotazione #${bookingIndex + 1} - ${principal.surname} ${principal.name} (${booking.participants.length} ${booking.participants.length > 1 ? 'persone' : 'persona'})</h2>
-                        ${participantsHtml}
-                    </div>
-                `;
-    }).join('')}
-            <button class="no-print" onclick="window.print()">Stampa</button>
-            <script>window.onload = () => window.print();</script>
-        </body>
-        </html>
+    allParticipants.sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        if (dateA.getTime() !== dateB.getTime()) {
+            return dateA.getTime() - dateB.getTime();
+        }
+        return a.participantOrder - b.participantOrder;
+    });
+
+    let printContent = `
+        <h2 style="color: #800020; text-align: center; border-bottom: 2px solid #800020; padding-bottom: 10px;">
+            Lista Partecipanti - ${event.name}
+        </h2>
+        <div style="text-align: center; margin: 15px 0; font-size: 12px;">
+            <p><strong>Data:</strong> ${formatDate(event.date)} | <strong>Ora:</strong> ${event.time} | <strong>Totale:</strong> ${allParticipants.length}</p>
+        </div>
     `;
 
+    if (allParticipants.length === 0) {
+        printContent += '<p style="text-align: center; font-style: italic;">Nessun partecipante registrato.</p>';
+    } else {
+        printContent += `
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 15px;">
+                <thead>
+                    <tr style="background-color: #800020; color: white;">
+                        <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">Nome</th>
+                        <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">Cognome</th>
+                        <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">Data Nascita</th>
+                        <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">Luogo e Prov. Nascita</th>
+                        <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">Luogo e Prov. Residenza</th>
+                        <th style="border: 1px solid #ccc; padding: 5px; text-align: left;">Numero AS Roma Card</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        allParticipants.forEach((p, index) => {
+            const rowColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+            printContent += `
+                <tr style="background-color: ${rowColor};">
+                    <td style="border: 1px solid #ccc; padding: 4px;">${p.name || ''}</td>
+                    <td style="border: 1px solid #ccc; padding: 4px;">${p.surname || ''}</td>
+                    <td style="border: 1px solid #ccc; padding: 4px;">${p.birthdate || ''}</td>
+                    <td style="border: 1px solid #ccc; padding: 4px;">${p.birthplace || ''} (${p.birthProvince || ''})</td>
+                    <td style="border: 1px solid #ccc; padding: 4px;">${p.residencePlace || ''} (${p.residenceProvince || ''})</td>
+                    <td style="border: 1px solid #ccc; padding: 4px;">${p.romaCard ? (p.romaCardNumber || 'N/A') : 'No'}</td>
+                </tr>
+            `;
+        });
+        printContent += `</tbody></table>`;
+    }
+
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(printHtml);
+    printWindow.document.write(`
+        <html><head><title>Lista Partecipanti - ${event.name}</title>
+        <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            body { font-family: 'Arial', sans-serif; line-height: 1.3; }
+            table, th, td { border: 1px solid #ccc; }
+        </style>
+        </head><body>${printContent}</body></html>`);
     printWindow.document.close();
+    printWindow.print();
 }
 
 export function shareWhatsapp() {
@@ -563,33 +559,44 @@ export function shareWhatsapp() {
 
     eventBookings.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-    let whatsappText = `*Lista Partecipanti - ${event.name}*\n`;
-    whatsappText += `📅 ${formatDate(event.date)} • 🕐 ${event.time} • 📍 ${event.location}\n`;
-    if (event.competition) whatsappText += `_${event.competition}_\n`;
-    whatsappText += `\n*Statistiche:*\n`;
-    const total = eventBookings.reduce((sum, b) => sum + b.participants.length, 0);
-    const soloViaggio = eventBookings.reduce((sum, b) => sum + b.participants.filter(p => p.bookingType === 'Solo Viaggio').length, 0);
-    const soloBiglietto = eventBookings.reduce((sum, b) => sum + b.participants.filter(p => p.bookingType === 'Solo Biglietto').length, 0);
-    const bigliettoPiuViaggio = eventBookings.reduce((sum, b) => sum + b.participants.filter(p => p.bookingType === 'Biglietto + Viaggio').length, 0);
-    whatsappText += `Totale: ${total} partecipanti\n`;
-    whatsappText += `Solo Viaggio: ${soloViaggio}\n`;
-    whatsappText += `Solo Biglietto: ${soloBiglietto}\n`;
-    whatsappText += `Biglietto + Viaggio: ${bigliettoPiuViaggio}\n\n`;
+    const totalParticipants = eventBookings.reduce((sum, b) => sum + b.participants.length, 0);
 
-    let globalParticipantCounter = 1;
-    eventBookings.forEach((booking, bookingIndex) => {
-        const principal = booking.participants[0];
-        whatsappText += `*Prenotazione #${bookingIndex + 1} - ${principal.surname} ${principal.name} (${booking.participants.length} ${booking.participants.length > 1 ? 'persone' : 'persona'})*\n`;
-        booking.participants.forEach((p) => {
-            const currentCount = globalParticipantCounter++;
-            whatsappText += `${currentCount}. ${p.name} ${p.surname} - ${p.bookingType}\n`;
-            whatsappText += `   📅 ${p.birthdate || 'N/D'} | 📍 ${p.birthplace || 'N/D'} (${p.birthProvince || 'N/A'})\n`;
-            whatsappText += `   🏠 ${p.residencePlace || 'N/D'} (${p.residenceProvince || 'N/A'}) | 📱 ${p.phone || 'N/D'} | ✉️ ${p.email || 'N/D'}\n`;
-            whatsappText += `   🎫 AS Roma Card: ${p.romaCard ? (p.romaCardNumber || 'Sì') : 'No'}\n\n`;
+    // Build message using String.fromCodePoint to avoid encoding issues
+    const lines = [];
+    lines.push(String.fromCodePoint(0x1F49B) + String.fromCodePoint(0x2764) + ' ROMA CLUB CDLVI PARMA');
+    lines.push('');
+    lines.push(String.fromCodePoint(0x1F4CD) + ' EVENTO: ' + event.name);
+    lines.push(String.fromCodePoint(0x1F4C5) + ' DATA: ' + formatDate(event.date));
+    lines.push(String.fromCodePoint(0x1F552) + ' ORARIO: ' + event.time);
+    lines.push(String.fromCodePoint(0x1F3DF) + ' LUOGO: ' + event.location);
+    lines.push(String.fromCodePoint(0x1F465) + ' PARTECIPANTI: ' + totalParticipants);
+    lines.push('');
+
+    let counter = 1;
+    eventBookings.forEach(booking => {
+        booking.participants.forEach(p => {
+            let emoji = '';
+            if (p.bookingType === 'Biglietto + Viaggio') {
+                emoji = String.fromCodePoint(0x1F697) + String.fromCodePoint(0x1F3AB); // 🚗🎫
+            } else if (p.bookingType === 'Solo Biglietto') {
+                emoji = String.fromCodePoint(0x1F3AB); // 🎫
+            } else if (p.bookingType === 'Solo Viaggio') {
+                emoji = String.fromCodePoint(0x1F697); // 🚗
+            }
+
+            lines.push(counter + '. ' + p.name + ' ' + p.surname);
+            lines.push('   ' + emoji);
+            counter++;
         });
     });
 
+    lines.push(String.fromCodePoint(0x2501).repeat(22)); // ━ line
+    lines.push(String.fromCodePoint(0x1F43A) + ' FORZA ROMA! ' + String.fromCodePoint(0x1F43A));
+    lines.push(String.fromCodePoint(0x1F4F1) + ' romaclubcdlvi.it/trasferte');
+
+    const whatsappText = lines.join('\n');
     const encodedText = encodeURIComponent(whatsappText);
-    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+
+    window.open('https://wa.me/?text=' + encodedText, '_blank');
     showMessage('Apri WhatsApp per condividere la lista', 'info');
 }
